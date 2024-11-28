@@ -38,7 +38,7 @@ Route::post('register', [RegisteredUserController::class, 'store']);
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
-});
+
 
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)

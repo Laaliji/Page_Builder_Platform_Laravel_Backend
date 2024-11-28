@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Models;
-
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -16,10 +14,13 @@ class User extends Authenticatable
         'github_id',
         'github_token',
         'github_refresh_token',
+        'firstname',
+        'lastname',
+        'username'
     ];
 
     protected $hidden = [
-        'password', 
+        'password',
         'remember_token',
     ];
 
