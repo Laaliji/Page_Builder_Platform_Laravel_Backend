@@ -12,3 +12,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/github/login', [GitHubAuthController::class, 'redirectToGitHub']);
     Route::get('/github/callback', [GitHubAuthController::class, 'handleGitHubCallback']);
 });
+
+Route::post('/signup', [UserController::class, 'store']);
