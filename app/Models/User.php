@@ -5,7 +5,8 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use Notifiable;
+    use HasApiTokens, Notifiable;
+     
 
     protected $fillable = [
         'name',
@@ -16,15 +17,40 @@ class User extends Authenticatable
         'github_refresh_token',
         'firstname',
         'lastname',
-        'username'
+        'username',
+        'is_github_connected'
     ];
 
     protected $hidden = [
         'password',
-        'remember_token',
+        'github_token',
+        'github_refresh_token'
     ];
 
     protected $casts = [
-        'email_verified_at' => 'datetime',
+        'is_github_connected' => 'boolean'
     ];
+
+     // Relationship to store additional user metadata
+     public function userProfile()
+     {
+         return $this->hasOne(UserProfile::class);
+     }
+ 
+     // Method to link GitHub account
+     public function linkGitHubAccount($githubId, $githubToken, $githubRefreshToken = null)
+     {
+         $this->update([
+             'github_id' => $githubId,
+             'github_token' => $githubToken,
+             'github_refresh_token' => $githubRefreshToken,
+             'is_github_connected' => true
+         ]);
+     }
+ 
+     // Check if GitHub is connected
+     public function isGitHubConnected()
+     {
+         return $this->is_github_connected;
+     }
 }

@@ -47,4 +47,5 @@ return [
     'redirect' => env('GITHUB_CALLBACK_REDIRECTS')
     ],
 
+    
 ];

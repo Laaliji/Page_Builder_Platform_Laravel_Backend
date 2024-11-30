@@ -1,16 +1,21 @@
 <?php
 
-use App\Http\Controllers\Auth\GitHubAuthController;
+use App\Http\Controllers\Auth\AuthController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
 
-Route::get('/auth/github/login', [GitHubAuthController::class, 'redirectToGitHub']);
-Route::get('/auth/github/callback', [GitHubAuthController::class, 'handleGitHubCallback']);
+Route::prefix('auth')->group(function () {
+    
+    Route::post('/signup', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
 
-
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/github/login', [GitHubAuthController::class, 'redirectToGitHub']);
-    Route::get('/github/callback', [GitHubAuthController::class, 'handleGitHubCallback']);
+   
+    Route::middleware('auth:sanctum')->group(function () {
+        
+        Route::get('/github/redirect', [AuthController::class, 'redirectToGitHub']);
+        Route::get('/github/callback', [AuthController::class, 'handleGitHubCallback']);
+        Route::delete('/github/unlink', [AuthController::class, 'unlinkGitHub']);
+        Route::get('/github/status', [AuthController::class, 'getGitHubConnectionStatus']);
+    });
 });
-
-Route::post('/signup', [UserController::class, 'store']);

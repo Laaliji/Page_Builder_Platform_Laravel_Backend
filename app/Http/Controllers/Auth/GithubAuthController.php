@@ -1,57 +1,70 @@
 <?php
 namespace App\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Support\Str;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
+use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class GitHubAuthController extends Controller
 {
     public function redirectToGitHub()
     {
-        return Socialite::driver('github')
-            ->stateless()
-            ->redirect();
+        return Socialite::driver('github')->redirect();
     }
 
-    public function handleGitHubCallback(Request $request)
+    public function handleGitHubCallback()
     {
         try {
-            $githubUser = Socialite::driver('github')
-                ->stateless()
-                ->user();
-           
-            $user = User::updateOrCreate(
-                ['email' => $githubUser->email],
-                [
-                    'name' => $githubUser->name ?? $githubUser->nickname,
-                    'email' => $githubUser->email,
-                    'github_id' => $githubUser->id,
+            $githubUser = Socialite::driver('github')->user();
+
+            // Find or create user based on GitHub ID or email
+            $user = User::where('github_id', $githubUser->getId())->first();
+
+            if (!$user) {
+                $user = User::where('email', $githubUser->getEmail())->first();
+            }
+
+            if (!$user) {
+                $user = User::create([
+                    'firstname' => $githubUser->getName() ? explode(' ', $githubUser->getName())[0] : '',
+                    'lastname' => $githubUser->getName() ? (count(explode(' ', $githubUser->getName())) > 1 ? explode(' ', $githubUser->getName())[1] : '') : '',
+                    'username' => $githubUser->getNickname() ?? Str::slug($githubUser->getEmail()),
+                    'email' => $githubUser->getEmail(),
+                    'github_id' => $githubUser->getId(),
                     'github_token' => $githubUser->token,
                     'github_refresh_token' => $githubUser->refreshToken,
-                    'password' => bcrypt(Str::random(16)),
-                    'firstname' => $githubUser->name ? explode(' ', $githubUser->name)[0] : null,
-                    'lastname' => $githubUser->name ? (count(explode(' ', $githubUser->name)) > 1 ? explode(' ', $githubUser->name)[1] : null) : null,
-                    'username' => $githubUser->nickname,
-                ]
-            );
-           
-          
-            $token = $user->createToken('GitHub OAuth Token')->plainTextToken;
-           
-            $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
-            $redirectUrl = "{$frontendUrl}/stepper?token={$token}&github_id={$githubUser->id}&email={$githubUser->email}&firstname={$user->firstname}&lastname={$user->lastname}&username={$user->username}";
-           
+                    'password' => bcrypt(Str::random(16)), // Random password for GitHub users
+                ]);
+            } else {
+                // Update existing user's GitHub details
+                $user->update([
+                    'github_id' => $githubUser->getId(),
+                    'github_token' => $githubUser->token,
+                    'github_refresh_token' => $githubUser->refreshToken,
+                ]);
+            }
+
+            // Generate a token for the user
+            $token = $user->createToken('GitHub Auth Token')->plainTextToken;
+
+            // Construct the redirect URL with query parameters
+            $redirectUrl = "http://localhost:5173/signup?" . http_build_query([
+                'token' => $token,
+                'github_id' => $githubUser->getId(),
+                'email' => $githubUser->getEmail(),
+                'firstname' => $user->firstname,
+                'lastname' => $user->lastname,
+                'username' => $user->username,
+            ]);
+
             return redirect($redirectUrl);
+
         } catch (\Exception $e) {
-            Log::error('GitHub OAuth Error: ' . $e->getMessage());
-           
-            return redirect(config('app.frontend_url', 'http://localhost:5173') . '/stepper')
-                ->with('error', 'GitHub authentication failed: ' . $e->getMessage());
+            // Handle any errors
+            return redirect('http://localhost:5173/signup')->with('error', 'GitHub authentication failed');
         }
     }
 }
