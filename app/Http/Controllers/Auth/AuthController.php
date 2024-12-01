@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Str;
+
 use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
@@ -80,6 +82,56 @@ public function register(Request $request)
     }
 }
 
+public function loginWithGitHub()
+{
+    return Socialite::driver('github')->stateless()->redirect();
+
+}
+
+public function handleGitHubCallback()
+{
+    try {
+        $githubUser = Socialite::driver('github')->user();
+        
+        $user = User::where('github_id', $githubUser->getId())->first();
+        
+        if (!$user) {
+            // Create a new user
+            $user = User::create([
+                'name' => $githubUser->getName() ?? $githubUser->getNickname(),
+                'email' => $githubUser->getEmail(),
+                'github_id' => $githubUser->getId(),
+                'password' => Hash::make(Str::random(24)),
+                'github_token' => $githubUser->token,
+                'github_refresh_token' => $githubUser->refreshToken,
+                'is_github_connected' => true,
+            ]);
+        } else {
+            // Update existing user
+            $user->update([
+                'github_token' => $githubUser->token,
+                'github_refresh_token' => $githubUser->refreshToken,
+                'is_github_connected' => true,
+            ]);
+        }
+
+        Auth::login($user);
+        
+        $token = $user->createToken('github-token')->plainTextToken;
+
+        return response()->json([
+            'user' => $user,
+            'token' => $token
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('GitHub Authentication Error:', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json(['error' => 'GitHub authentication failed'], 500);
+    }
+}
+
     // Redirect to GitHub OAuth
     public function redirectToGitHub()
     {
@@ -88,45 +140,7 @@ public function register(Request $request)
             ->redirect();
     }
 
-    // GitHub OAuth Callback
-    public function handleGitHubCallback(Request $request)
-    {
-        // Ensure user is authenticated
-        if (!Auth::check()) {
-            return response()->json(['error' => 'User must be logged in first'], 403);
-        }
-
-        try {
-            $githubUser = Socialite::driver('github')->user();
-            
-            // Get the currently authenticated user
-            $user = $request->user();
-
-            // Link GitHub account
-            $user->update([
-                'github_id' => $githubUser->getId(),
-                'github_token' => $githubUser->token,
-                'github_refresh_token' => $githubUser->refreshToken,
-                'is_github_connected' => true,
-            ]);
-
-            return response()->json([
-                'message' => 'GitHub account successfully linked',
-                'github_profile' => [
-                    'id' => $githubUser->getId(),
-                    'nickname' => $githubUser->getNickname(),
-                    'name' => $githubUser->getName(),
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('GitHub Authentication Error:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json(['error' => 'GitHub authentication failed'], 500);
-        }
-    }
-
+    
     // Unlink GitHub Account
     public function unlinkGitHub(Request $request)
     {
