@@ -1,49 +1,57 @@
 <?php
-
 namespace App\Models;
-
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, Notifiable;
+     
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'google_id'
+        'github_id',
+        'github_token',
+        'github_refresh_token',
+        'firstname',
+        'lastname',
+        'username',
+        'is_github_connected'
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
-        'remember_token',
+        'github_token',
+        'github_refresh_token'
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+    protected $casts = [
+        'is_github_connected' => 'boolean'
+    ];
+
+     // Relationship to store additional user metadata
+     public function userProfile()
+     {
+         return $this->hasOne(UserProfile::class);
+     }
+ 
+     // Method to link GitHub account
+     public function linkGitHubAccount($githubId, $githubToken, $githubRefreshToken = null)
+     {
+         $this->update([
+             'github_id' => $githubId,
+             'github_token' => $githubToken,
+             'github_refresh_token' => $githubRefreshToken,
+             'is_github_connected' => true
+         ]);
+     }
+ 
+     // Check if GitHub is connected
+     public function isGitHubConnected()
+     {
+         return $this->is_github_connected;
+     }
 }
