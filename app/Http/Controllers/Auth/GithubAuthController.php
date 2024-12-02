@@ -3,68 +3,117 @@ namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class GitHubAuthController extends Controller
 {
-    public function redirectToGitHub()
+    public function loginWithGitHub()
     {
-        return Socialite::driver('github')->redirect();
+        return Socialite::driver('github')
+            ->scopes(['user:email'])
+            ->stateless()
+            ->redirect();
     }
 
     public function handleGitHubCallback()
     {
         try {
-            $githubUser = Socialite::driver('github')->user();
-
-            // Find or create user based on GitHub ID or email
-            $user = User::where('github_id', $githubUser->getId())->first();
-
-            if (!$user) {
-                $user = User::where('email', $githubUser->getEmail())->first();
-            }
-
-            if (!$user) {
-                $user = User::create([
-                    'firstname' => $githubUser->getName() ? explode(' ', $githubUser->getName())[0] : '',
-                    'lastname' => $githubUser->getName() ? (count(explode(' ', $githubUser->getName())) > 1 ? explode(' ', $githubUser->getName())[1] : '') : '',
-                    'username' => $githubUser->getNickname() ?? Str::slug($githubUser->getEmail()),
-                    'email' => $githubUser->getEmail(),
-                    'github_id' => $githubUser->getId(),
-                    'github_token' => $githubUser->token,
-                    'github_refresh_token' => $githubUser->refreshToken,
-                    'password' => bcrypt(Str::random(16)), // Random password for GitHub users
-                ]);
-            } else {
-                // Update existing user's GitHub details
-                $user->update([
-                    'github_id' => $githubUser->getId(),
-                    'github_token' => $githubUser->token,
-                    'github_refresh_token' => $githubUser->refreshToken,
-                ]);
-            }
-
-            // Generate a token for the user
-            $token = $user->createToken('GitHub Auth Token')->plainTextToken;
-
-            // Construct the redirect URL with query parameters
-            $redirectUrl = "http://localhost:5173/signup?" . http_build_query([
-                'token' => $token,
-                'github_id' => $githubUser->getId(),
-                'email' => $githubUser->getEmail(),
-                'firstname' => $user->firstname,
-                'lastname' => $user->lastname,
-                'username' => $user->username,
+            \Log::info('GitHub Callback Initiated', [
+                'full_request' => request()->all(),
+                'code' => request('code'),
             ]);
-
-            return redirect($redirectUrl);
-
+    
+            
+            $githubUser = Socialite::driver('github')->stateless()->user();
+    
+            
+            $nameParts = explode(' ', $githubUser->getName(), 2);
+            $firstname = $nameParts[0] ?? null;
+            $lastname = $nameParts[1] ?? null;
+    
+            
+            $username = $githubUser->getNickname() ?? strtolower(str_replace(' ', '_', $githubUser->getName()));
+    
+            
+            $user = User::firstOrCreate(
+                ['email' => $githubUser->getEmail()],
+                [
+                    'firstname' => $firstname,
+                    'lastname' => $lastname,
+                    'username' => $username,
+                    'github_id' => $githubUser->getId(),
+                    'password' => Hash::make(Str::random(24)),
+                    'github_token' => $githubUser->token,
+                    'github_refresh_token' => $githubUser->refreshToken,
+                    'is_github_connected' => true,
+                ]
+            );
+    
+            
+            if (!$user->wasRecentlyCreated) {
+                $user->update([
+                    'github_token' => $githubUser->token,
+                    'github_refresh_token' => $githubUser->refreshToken,
+                    'is_github_connected' => true,
+                    'username' => $username, 
+                ]);
+            }
+    
+            
+            $token = $user->createToken('github-token')->plainTextToken;
+    
+            
+            $frontendRedirectUrl = env('FRONTEND_URL')
+                                 . '/login?token='
+                                 . $token 
+                                 . '&github_id=' 
+                                 . $githubUser->getId() 
+                                 . '&email=' 
+                                 . $githubUser->getEmail();
+            return redirect()->away($frontendRedirectUrl);
+    
         } catch (\Exception $e) {
-            // Handle any errors
-            return redirect('http://localhost:5173/signup')->with('error', 'GitHub authentication failed');
+            // Log any exceptions
+            \Log::error('GitHub Authentication Detailed Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'exception_class' => get_class($e),
+                'request_details' => request()->all()
+            ]);
+    
+            // Return a JSON response with error details
+            return response()->json([
+                'error' => 'GitHub authentication failed',
+                'details' => $e->getMessage()
+            ], 500);
         }
+    }
+ 
+    public function unlinkGitHub(Request $request)
+    {
+        $user = $request->user();
+        
+        $user->update([
+            'github_id' => null,
+            'github_token' => null,
+            'github_refresh_token' => null,
+            'is_github_connected' => false
+        ]);
+
+        return response()->json(['message' => 'GitHub account unlinked']);
+    }
+
+    public function getGitHubConnectionStatus(Request $request)
+    {
+        $user = $request->user();
+        
+        return response()->json([
+            'is_github_connected' => $user->is_github_connected ?? false,
+            'github_username' => $user->github_id 
+        ]);
     }
 }

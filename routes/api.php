@@ -1,21 +1,22 @@
 <?php
 use App\Http\Controllers\Auth\AuthController;
-
+use App\Http\Controllers\Auth\GitHubAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-
 Route::prefix('auth')->group(function () {
+    // Normal Auth Routes
     Route::post('/signup', [AuthController::class, 'register'])->name('auth.signup');
     Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
    
-    Route::get('/github', [AuthController::class, 'loginWithGitHub'])->name('github.login');
-    Route::get('/github/callback', [AuthController::class, 'handleGitHubCallback'])->name('github.callback');
+    // GitHub OAuth Routes
+    Route::get('/github', [GitHubAuthController::class, 'loginWithGitHub'])->name('github.login');
+    Route::get('/github/callback', [GitHubAuthController::class, 'handleGitHubCallback'])->name('github.callback');
    
+    // Protected GitHub Routes
     Route::middleware('auth:sanctum')->group(function () {
-        Route::get('/github/redirect', [AuthController::class, 'redirectToGitHub'])->name('github.redirect');
-        Route::delete('/github/unlink', [AuthController::class, 'unlinkGitHub'])->name('github.unlink');
-        Route::get('/github/status', [AuthController::class, 'getGitHubConnectionStatus'])->name('github.status');
+        Route::delete('/github/unlink', [GitHubAuthController::class, 'unlinkGitHub'])->name('github.unlink');
+        Route::get('/github/status', [GitHubAuthController::class, 'getGitHubConnectionStatus'])->name('github.status');
     });
 });
 

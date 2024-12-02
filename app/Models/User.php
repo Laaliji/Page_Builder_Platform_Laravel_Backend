@@ -32,13 +32,11 @@ class User extends Authenticatable
         'is_github_connected' => 'boolean'
     ];
 
-     // Relationship to store additional user metadata
      public function userProfile()
      {
          return $this->hasOne(UserProfile::class);
      }
  
-     // Method to link GitHub account
      public function linkGitHubAccount($githubId, $githubToken, $githubRefreshToken = null)
      {
          $this->update([
@@ -49,7 +47,6 @@ class User extends Authenticatable
          ]);
      }
  
-     // Check if GitHub is connected
      public function isGitHubConnected()
      {
          return $this->is_github_connected;

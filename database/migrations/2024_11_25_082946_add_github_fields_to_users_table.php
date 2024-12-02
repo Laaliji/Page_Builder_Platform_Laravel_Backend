@@ -12,9 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('github_id')->nullable();
-            $table->string('github_token')->nullable();
-            $table->string('github_refresh_token')->nullable();
+            if (!Schema::hasColumn('users', 'github_id')) {
+                $table->string('github_id')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'github_token')) {
+                $table->text('github_token')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'github_refresh_token')) {
+                $table->text('github_refresh_token')->nullable();
+            }
+            if (!Schema::hasColumn('users', 'is_github_connected')) {
+                $table->boolean('is_github_connected')->default(0);
+            }
         });
     }
 
@@ -24,11 +33,18 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn([
-                'github_id',
-                'github_token',
-                'github_refresh_token'
-            ]);
+            if (Schema::hasColumn('users', 'github_id')) {
+                $table->dropColumn('github_id');
+            }
+            if (Schema::hasColumn('users', 'github_token')) {
+                $table->dropColumn('github_token');
+            }
+            if (Schema::hasColumn('users', 'github_refresh_token')) {
+                $table->dropColumn('github_refresh_token');
+            }
+            if (Schema::hasColumn('users', 'is_github_connected')) {
+                $table->dropColumn('is_github_connected');
+            }
         });
     }
 };
