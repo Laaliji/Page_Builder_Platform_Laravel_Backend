@@ -23,6 +23,14 @@ class ProjectController extends Controller
         );
     }    
 
+    public function show($id){
+        $project = Project::find($id);
+        if(!$project){
+            return response(['STATE'=>ApiResponse::NOT_FOUND]);
+        }
+        return new ProjectResource($project);
+    }
+
     public function getProjectsByUser($id){
         $user = User::find($id);
         if(!$user){
@@ -34,14 +42,36 @@ class ProjectController extends Controller
 
     public function store(Request $request)
     {
-        // Validation logic here
         return $this->projectService->addProject($request->validated());
     }
 
-    public function update(Request $request, $idP)
-    {
-        // Validation logic here
-        return $this->projectService->updateProject($idP, $request->validated());
+    public function update(Request $request, $id){
+        $project = Project::find($id);
+        
+        if(!$project){
+            return response(['STATE'=>ApiResponse::NOT_FOUND]);
+        }
+    
+        $project->title = $request->input('title');
+        $project->desctiption = $request->input('description');
+        $project->domaineName = $request->input('domaineName');
+        $project->repository = $request->input('repository');
+    
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $imageName = time().'.'.$image->getClientOriginalExtension();
+            $image->move(public_path('uploads/projects'), $imageName);
+            $project->image_url = 'uploads/projects/'.$imageName;
+        }
+
+        if($project->save()){
+            return response([
+                'STATE' => ApiResponse::OK,
+                'data' => $request->all()
+            ]);
+        }
+    
+        return response(['STATE'=>ApiResponse::ERROR]);
     }
 
     public function destroy($id){

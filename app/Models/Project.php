@@ -15,6 +15,7 @@ class Project extends Model
         'title',
         'domaineName',
         'repository',
+        'desctiption',
         'image_url',
         'user_id'
     ];

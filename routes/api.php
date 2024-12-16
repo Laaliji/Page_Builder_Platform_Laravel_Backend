@@ -16,12 +16,25 @@ Route::prefix('auth')->group(function () {
    
     // Protected GitHub Routes
     Route::middleware('auth:sanctum')->group(function () {
+<<<<<<< HEAD
         Route::delete('/github/unlink', [GitHubAuthController::class, 'unlinkGitHub'])->name('github.unlink');
         Route::get('/github/status', [GitHubAuthController::class, 'getGitHubConnectionStatus'])->name('github.status');
+=======
+        
+        Route::get('/github/redirect', [AuthController::class, 'redirectToGitHub']);
+        Route::get('/github/callback', [AuthController::class, 'handleGitHubCallback']);
+        Route::delete('/github/unlink',[AuthController::class, 'unlinkGitHub']);
+        Route::get('/github/status', [AuthController::class, 'getGitHubConnectionStatus']);
+    
+        
+>>>>>>> origin/Hamza_Branch
     });
 });
 
+Route::post('/projects/update/{id}',[ProjectController::class,'update']);
+
 Route::apiResource('/projects',ProjectController::class);
+
 Route::get('/users/{id}/projects', [ProjectController::class, 'getProjectsByUser']);
 
 
