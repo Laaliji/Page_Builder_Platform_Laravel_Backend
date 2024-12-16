@@ -15,14 +15,17 @@ Route::prefix('auth/')->group(function () {
         
         Route::get('/github/redirect', [AuthController::class, 'redirectToGitHub']);
         Route::get('/github/callback', [AuthController::class, 'handleGitHubCallback']);
-        Route::delete('/github/unlink', [AuthController::class, 'unlinkGitHub']);
+        Route::delete('/github/unlink',[AuthController::class, 'unlinkGitHub']);
         Route::get('/github/status', [AuthController::class, 'getGitHubConnectionStatus']);
     
         
     });
 });
 
+Route::post('/projects/update/{id}',[ProjectController::class,'update']);
+
 Route::apiResource('/projects',ProjectController::class);
+
 Route::get('/users/{id}/projects', [ProjectController::class, 'getProjectsByUser']);
 
 
