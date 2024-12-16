@@ -6,7 +6,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use Notifiable;
      
 
     protected $fillable = [
@@ -47,6 +47,13 @@ class User extends Authenticatable
          ]);
      }
  
+
+
+     public function projects(){
+         return $this->hasMany(Project::class, 'user_id', 'id');
+     }
+
+
      public function isGitHubConnected()
      {
          return $this->is_github_connected;

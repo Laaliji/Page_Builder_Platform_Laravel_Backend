@@ -14,9 +14,15 @@ return new class extends Migration
         Schema::create('projects', function (Blueprint $table) {
             $table->id('idP');
             $table->string('title');
+            $table->text('desctiption');
             $table->string('domaineName');
             $table->string('repository');
+            $table->string('image_url');
+            $table->unsignedBigInteger('user_id');
             $table->timestamps(); 
+
+
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

@@ -1,6 +1,7 @@
 <?php
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GitHubAuthController;
+use App\Http\Controllers\ProjectController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,12 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::apiResource('/projects',ProjectController::class);
+Route::get('/users/{id}/projects', [ProjectController::class, 'getProjectsByUser']);
+
+
+Route::get('/user', function (Request $request) {
     return $request->user();
-})->name('user.info');
+})->middleware('auth:sanctum');
+
+
