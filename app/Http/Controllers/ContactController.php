@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -28,6 +29,7 @@ class ContactController extends Controller
     // Ajouter un contact (POST)
     public function store(Request $request)
     {
+        // Valider les données du formulaire
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
@@ -64,4 +66,25 @@ class ContactController extends Controller
 
         return response()->json(['message' => 'Contact supprimé avec succès.']);
     }
+
+    // Afficher les 5 derniers contacts ajoutés
+    public function latest()
+    {
+    // Récupérer les 5 derniers contacts triés par `created_at` en ordre décroissant
+    $contacts = Contact::orderBy('created_at', 'desc')->limit(5)->get();
+
+    // Vérification des contacts avec débogage
+    \Log::info('Contacts récupérés : ', $contacts->toArray());
+
+    // Vérifier si des contacts existent
+    if ($contacts->isEmpty()) {
+        return response()->json(['message' => 'Aucun contact trouvé jjjjjj.'], 404);
+    }
+
+    // Retourner les contacts sous forme de JSON
+    return response()->json($contacts);
+    }
 }
+
+
+ 

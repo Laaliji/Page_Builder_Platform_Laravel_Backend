@@ -34,24 +34,20 @@ Route::apiResource('/projects',ProjectController::class);
 Route::get('/users/{id}/projects', [ProjectController::class, 'getProjectsByUser']);
 
 
-
-// Contact sprint  by Hnioua Abdessamad
-
+// Afficher tous les contacts +5 derniers.
+Route::get('/contacts/latest', [ContactController::class, 'latest']);
 
 // Afficher tous les contacts
 Route::get('/contacts', [ContactController::class, 'index']);
 
 // Afficher un contact par ID
-// Route::get('/contacts/{id}', [ContactController::class, 'show']);
+Route::get('/contacts/{id}', [ContactController::class, 'show']);
 
 // Ajouter un contact (POST)
 Route::post('/contact', [ContactController::class, 'store']);
 
 // Supprimer un contact par ID
 Route::delete('/contacts/{id}', [ContactController::class, 'destroy']);
-
-
-
 
 
 Route::get('/user', function (Request $request) {
