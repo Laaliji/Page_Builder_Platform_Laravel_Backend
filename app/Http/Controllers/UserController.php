@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ApiResponse;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -9,8 +10,7 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
-    public function store(Request $request)
-    {
+    public function store(Request $request){
         $validator = Validator::make($request->all(), [
             'firstname' => 'required|string|max:255',
             'lastname' => 'required|string|max:255',
@@ -47,6 +47,18 @@ class UserController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function isConnectedWithGitHub(Request $request, $id){
+        $user = User::find($id);
+        if(!$user){
+            return response(['STATE'=>ApiResponse::NOT_FOUND]);
+        }
+
+        return response([
+            'STATE' => ApiResponse::OK,
+            'isConnected' => $user->is_github_connected == '1'
+        ]);
     }
     
 }

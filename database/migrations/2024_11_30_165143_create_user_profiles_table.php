@@ -10,24 +10,11 @@ return new class extends Migration
     {
         Schema::create('user_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')
-                  ->constrained()
-                  ->onDelete('cascade');
-            
-            // Additional profile fields
-            $table->string('display_name')->nullable();
-            $table->text('bio')->nullable();
-            $table->string('location')->nullable();
-            $table->string('website')->nullable();
-            
-            // Tracking fields for code generation
-            $table->integer('total_projects')->default(0);
-            $table->timestamp('last_project_created_at')->nullable();
-            
-            // Optional fields for tracking user preferences
-            $table->json('preferences')->nullable();
-            
+            $table->string('image');
+            $table->unsignedBigInteger('user_id');
             $table->timestamps();
+
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

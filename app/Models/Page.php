@@ -2,24 +2,24 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Page extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'idPage';
+    protected $primaryKey = 'id';
+    protected $keyType = 'string';
+    public $incrementing = false;
 
     protected $fillable = [
         'title',
-        'urlPage',
+        'html_page_title',
+        'html_content',
+        'css_content',
         'project_id'
     ];
-
-    public function components()
-    {
-        return $this->hasMany(Component::class, 'page_id', 'idPage');
-    }
 
     public function project()
     {

@@ -9,23 +9,24 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
+    public function up(): void{
         Schema::create('pages', function (Blueprint $table) {
-            $table->id('idPage');
+            $table->string('id')->primary();
             $table->string('title');
-            $table->string('urlPage');
-            $table->foreignId('project_id')->constrained('projects', 'idP')
-                  ->onDelete('cascade');
+            $table->string('html_page_title')->default('title')->nullable();
+            $table->text('html_content')->nullable();
+            $table->text('css_content')->nullable();
+            $table->unsignedBigInteger('project_id');
             $table->timestamps();
+
+            $table->foreign('project_id')->references('idP')->on('projects')->onDelete('cascade');
         });
     }
 
     /**
      * Reverse the migrations.
      */
-    public function down(): void
-    {
+    public function down(): void{
         Schema::dropIfExists('pages');
     }
 };

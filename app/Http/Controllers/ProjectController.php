@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Enums\ApiResponse;
+use Illuminate\Support\Facades\Validator;
 
 class ProjectController extends Controller
 {
@@ -40,8 +41,7 @@ class ProjectController extends Controller
         return ProjectResource::collection($user->projects);
     }
 
-    public function store(Request $request)
-    {
+    public function store(Request $request){
         return $this->projectService->addProject($request->validated());
     }
 
@@ -50,6 +50,39 @@ class ProjectController extends Controller
         
         if(!$project){
             return response(['STATE'=>ApiResponse::NOT_FOUND]);
+        }
+
+        if($request->only('title') === $request->all()){
+            
+            $project->title = $request->title;
+
+            if($project->save()) return response([
+                "STATE" => ApiResponse::OK,
+            ]);
+
+            return response(["STATE" => ApiResponse::ERROR]);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'domaineName' => 'required|string|max:255',
+            'repository' => 'nullable|url',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg',
+        ], [
+            'title.required' => 'Le titre du projet est obligatoire',
+            'description.required' => 'Veuillez fournir une description pour le projet.',
+            'domaineName.required' => 'Le nom du domaine est obligatoire.',
+            'repository.url' => 'L\'URL du dépôt doit être valide.',
+            'image.image' => 'Le fichier doit être une image.',
+            'image.mimes' => 'Seuls les formats JPEG, PNG et JPG sont autorisés pour l\'image.',
+        ]);
+
+        if($validator->fails()){
+            return response([
+                'STATE' => ApiResponse::INVALID_DATA,
+                'ERRORS' => $validator->errors()
+            ]);
         }
     
         $project->title = $request->input('title');
@@ -71,18 +104,34 @@ class ProjectController extends Controller
             ]);
         }
     
+    
         return response(['STATE'=>ApiResponse::ERROR]);
     }
 
-    public function destroy($id){
+    public function destroy(Request $request, $id){
         $project = Project::find($id);
-        if(!$project){
-            return response(['message'=>'project NotFound' , 'STATE' => ApiResponse::NOT_FOUND]);
+        
+        if (!$project) {
+            return response(['id' => $id, 'STATE' => ApiResponse::NOT_FOUND]);
         }
-        if($project->delete()){
+        
+        if ($request->has('title')) {
+
+            if ($project->title == $request->title) { 
+                if ($project->delete()) {
+                    return response(["STATE" => ApiResponse::OK]);
+                }
+                return response(["STATE" => ApiResponse::ERROR]);
+            }
+            return response(["STATE" => ApiResponse::INVALID_DATA]);
+        }
+        
+        if ($project->delete()) {
             return response(['STATE' => ApiResponse::OK]);
-        }else{
-            return response(['STATE' => ApiResponse::ERROR]);
         }
+        
+        return response(['STATE' => ApiResponse::ERROR]);
     }
+
+
 }
