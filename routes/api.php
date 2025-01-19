@@ -23,6 +23,8 @@ Route::prefix('auth/')->group(function () {
 });
 
 Route::post('/projects/update/{id}',[ProjectController::class,'update']);
+Route::post('/projects/create',[ProjectController::class,'create']);
+
 
 Route::apiResource('/projects',ProjectController::class);
 
