@@ -17,7 +17,8 @@ class Project extends Model
         'repository',
         'description',
         'image_url',
-        'user_id'
+        'user_id',
+        'project_type' 
     ];
 
 

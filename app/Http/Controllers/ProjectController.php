@@ -12,16 +12,35 @@ class ProjectController extends Controller
 {
     protected $projectService;
 
-    // public function __construct(ProjectManagementService $projectService)
-    // {
-    //     $this->projectService = $projectService;
-    // }
-
     public function index(){
         return ProjectResource::collection(
             Project::query()->orderBy('idP')->get()
         );
     }    
+
+    public function createPageFromTemplate(Request $request)
+    {
+        $validatedData = $request->validate([
+            'project_id' => 'required|exists:projects,idP',
+            'template_id' => 'required|exists:templates,id'
+        ]);
+
+        $template = Template::findOrFail($validatedData['template_id']);
+        $project = Project::findOrFail($validatedData['project_id']);
+
+        // Create first page using template
+        $page = $project->pages()->create([
+            'title' => $template->name,
+            'html_content' => $template->html_content,
+            'css_content' => $template->css_content
+        ]);
+
+        return response()->json([
+            'project' => $project,
+            'page' => $page,
+            'template' => $template
+        ]);
+    }
 
     public function show($id){
         $project = Project::find($id);
@@ -54,6 +73,7 @@ class ProjectController extends Controller
             'repoUrl' => 'nullable|url',
             'image' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:2048',
             'user_id' => 'required|exists:users,id',
+            'project_type' => 'nullable|string|max:255',
         ]);
     
         $project = new Project();
@@ -62,15 +82,16 @@ class ProjectController extends Controller
         $project->domaineName = $validatedData['websiteTitle'] ?? null;
         $project->repository = $validatedData['repoUrl'] ?? null;
         $project->user_id = $validatedData['user_id'];
+        $project->project_type = $validatedData['project_type'] ?? null;
     
-        // Check if the image is provided, if not, set image_url to an empty string
+        
         if ($request->hasFile('image')) {
             $image = $request->file('image');
             $imageName = time() . '.' . $image->getClientOriginalExtension();
             $image->move(public_path('uploads/projects'), $imageName);
             $project->image_url = 'uploads/projects/' . $imageName;
         } else {
-            // Set image_url to an empty string if no image is uploaded
+            
             $project->image_url = '';  
         }
     
@@ -85,39 +106,48 @@ class ProjectController extends Controller
     }
     
 
-public function update(Request $request, $id)
-{
-    $project = Project::find($id);
-
-    if (!$project) {
-        return response(['STATE' => ApiResponse::NOT_FOUND]);
+    public function update(Request $request, $id)
+    {
+        $project = Project::find($id);
+    
+        if (!$project) {
+            return response(['STATE' => ApiResponse::NOT_FOUND]);
+        }
+    
+        
+        if ($request->has('title')) {
+            $project->title = $request->input('title');
+        }
+        if ($request->has('description')) {
+            $project->description = $request->input('description');
+        }
+        if ($request->has('domaineName')) {
+            $project->domaineName = $request->input('domaineName');
+        }
+        if ($request->has('repository')) {
+            $project->repository = $request->input('repository');
+        }
+        if ($request->has('project_type')) {
+            $project->project_type = $request->input('project_type');
+        }
+    
+        
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $imageName = time() . '.' . $image->getClientOriginalExtension();
+            $image->move(public_path('uploads/projects'), $imageName);
+            $project->image_url = 'uploads/projects/' . $imageName;
+        }
+    
+        if ($project->save()) {
+            return response([
+                'STATE' => ApiResponse::OK,
+                'data' => new ProjectResource($project),
+            ]);
+        }
+    
+        return response(['STATE' => ApiResponse::ERROR]);
     }
-
-    $project->title = $request->input('title');
-    $project->description = $request->input('description');
-    $project->domaineName = $request->input('domaineName');
-    $project->repository = $request->input('repository');
-
-    // If an image is uploaded, update the image_url; otherwise, keep it null or empty
-    if ($request->hasFile('image')) {
-        $image = $request->file('image');
-        $imageName = time() . '.' . $image->getClientOriginalExtension();
-        $image->move(public_path('uploads/projects'), $imageName);
-        $project->image_url = 'uploads/projects/' . $imageName;
-    } else {
-        // Set image_url to null or empty string if no new image is uploaded
-        $project->image_url = null;  // Or you could use '' if you prefer
-    }
-
-    if ($project->save()) {
-        return response([
-            'STATE' => ApiResponse::OK,
-            'data' => $request->all(),
-        ]);
-    }
-
-    return response(['STATE' => ApiResponse::ERROR]);
-}
 
     
 
