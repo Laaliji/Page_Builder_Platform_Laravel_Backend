@@ -13,12 +13,14 @@ class CreateContactsTable extends Migration
             $table->string('email');
             $table->string('phone');
             $table->text('message');
+            // $table->text('response')->nullable(); // Nouveau champ
             $table->string('status')->default('Pas encore');
             $table->timestamp('contact_date')->useCurrent();
             $table->timestamp('response_date')->nullable();
             $table->timestamps();
         });
     }
+
 
     public function down()
     {

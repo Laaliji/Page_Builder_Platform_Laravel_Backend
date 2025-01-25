@@ -34,6 +34,15 @@ Route::apiResource('/projects',ProjectController::class);
 Route::get('/users/{id}/projects', [ProjectController::class, 'getProjectsByUser']);
 
 
+
+
+// save la reponse et mise a jour le status 
+Route::put('/contacts/{id}/respond', [ContactController::class, 'respond']);
+
+// envoyer la reponse par mail 
+Route::post('/send-email', [ContactController::class, 'sendEmail']);
+
+
 // Afficher tous les contacts +5 derniers.
 Route::get('/contacts/latest', [ContactController::class, 'latest']);
 
@@ -48,6 +57,10 @@ Route::post('/contact', [ContactController::class, 'store']);
 
 // Supprimer un contact par ID
 Route::delete('/contacts/{id}', [ContactController::class, 'destroy']);
+
+
+
+
 
 
 Route::get('/user', function (Request $request) {

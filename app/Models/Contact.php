@@ -16,6 +16,8 @@ class Contact extends Model
         'status',
         'contact_date',
         'response_date',
+        'response', // Nouveau champ pour stocker la réponse
     ];
+    
 }
 

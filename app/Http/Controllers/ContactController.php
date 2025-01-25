@@ -5,6 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Contact;
 
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Mail\Message;
+
+
+use App\Notifications\EmailNotification;
+use Illuminate\Support\Facades\Notification;
+
 class ContactController extends Controller
 {
     // Afficher tous les contacts
@@ -84,6 +91,58 @@ class ContactController extends Controller
     // Retourner les contacts sous forme de JSON
     return response()->json($contacts);
     }
+
+    // Sauvegarder une réponse et mettre à jour le statut
+    public function respond(Request $request, $id)
+    {
+        // Valider les données de la réponse
+        $validatedData = $request->validate([
+            'response' => 'required|string|max:1000',
+        ]);
+
+        // Récupérer le contact
+        $contact = Contact::find($id);
+
+        if (!$contact) {
+            return response()->json(['message' => 'Contact non trouvé.'], 404);
+        }
+
+        // Mettre à jour les champs `response`, `status` et `response_date`
+        $contact->update([
+            'response' => $validatedData['response'],
+            'status' => 'Répondu',
+            'response_date' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Réponse enregistrée avec succès.',
+            'contact' => $contact,
+        ]);
+    }
+
+   
+
+    public function sendEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'subject' => 'required|string',
+            'message' => 'required|string',
+        ]);
+
+        $details = [
+            'email' => $request->email,
+            'name' => 'Utilisateur',
+            'subject' => $request->subject,
+            'message' => $request->message,
+        ];
+
+        Notification::route('mail', $request->email)->notify(new EmailNotification($details));
+
+        return response()->json(['message' => 'Email envoyé avec succès !'], 200);
+    }
+
+
 }
 
 
