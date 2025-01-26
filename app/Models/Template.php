@@ -14,7 +14,7 @@ class Template extends Model
         'description',
     ];
    
-    public function projects()  // One template can be used by many projects
+    public function projects()  
     {
         return $this->hasMany(Project::class, 'template_id', 'id');
     }

@@ -130,6 +130,9 @@ class ProjectController extends Controller
         if ($request->has('project_type')) {
             $project->project_type = $request->input('project_type');
         }
+        if ($request->has('template_id')) {
+            $project->template_id = $request->input('template_id');
+        }
     
         
         if ($request->hasFile('image')) {
