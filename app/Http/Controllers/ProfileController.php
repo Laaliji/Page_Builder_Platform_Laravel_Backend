@@ -9,6 +9,7 @@ use App\Models\UserProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\View\View;
@@ -23,18 +24,22 @@ class ProfileController extends Controller
             return response(['STATE'=>ApiResponse::NOT_FOUND]);
         }
 
-        return new UserProfileResource($userProfile);
+        return Cache::remember('UserProfile_'.$id,now()->addMinutes(50),function() use($userProfile) {
+            new UserProfileResource($userProfile);
+        });
     }
 
 
     public function edit(Request $request): View
     {
+
         return view('profile.edit', [
             'user' => $request->user(),
         ]);
     }
 
     public function update(Request $request,$id) {
+        Cache::forget('UserProfile_'.$id);
         $userProfile = UserProfile::find($id);
         if(!$userProfile){
             return response(['STATE'=>ApiResponse::NOT_FOUND]);

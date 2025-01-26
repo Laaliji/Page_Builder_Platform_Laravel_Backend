@@ -42,6 +42,9 @@ Route::get('/user/checkGitHubConnection/{id}', [UserController::class, 'isConnec
 
 Route::get('/pages/existePages/{id}', [PageController::class, 'ExistePages']);
 
+Route::get('/page/{id}', [PageController::class, 'showPage']);
+Route::post('/page/updateMetaData/{id}', [PageController::class, 'updatePageMetaData']);
+
 Route::get('/hash', function () {
     return Hash::make('123456789');
 });

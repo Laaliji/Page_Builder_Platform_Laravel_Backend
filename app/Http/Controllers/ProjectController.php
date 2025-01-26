@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use App\Enums\ApiResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 
 class ProjectController extends Controller
 {
@@ -29,15 +30,22 @@ class ProjectController extends Controller
         if(!$project){
             return response(['STATE'=>ApiResponse::NOT_FOUND]);
         }
-        return new ProjectResource($project);
+        return Cache::remember("Project_{$id}", now()->addMinutes(30), function () use ($project) {
+            return new ProjectResource($project);
+        });
     }
 
     public function getProjectsByUser($id){
         $user = User::find($id);
+        $PorjectByUser_CacheKey = "PorjectsByUser_{$id}";
         if(!$user){
             return response(['message'=>'user NotFound','STATE' => ApiResponse::NOT_FOUND]);
         }
+        if(Cache::has($PorjectByUser_CacheKey)){
+            return Cache::get($PorjectByUser_CacheKey);
+        }
 
+        Cache::put($PorjectByUser_CacheKey, ProjectResource::collection($user->projects), now()->addMinutes(50));
         return ProjectResource::collection($user->projects);
     }
 
@@ -98,6 +106,7 @@ class ProjectController extends Controller
         }
 
         if($project->save()){
+            Cache::forget("Project_{$id}");
             return response([
                 'STATE' => ApiResponse::OK,
                 'data' => $request->all()
@@ -114,6 +123,8 @@ class ProjectController extends Controller
         if (!$project) {
             return response(['id' => $id, 'STATE' => ApiResponse::NOT_FOUND]);
         }
+
+        Cache::forget("Project_{$id}");
         
         if ($request->has('title')) {
 
@@ -132,6 +143,5 @@ class ProjectController extends Controller
         
         return response(['STATE' => ApiResponse::ERROR]);
     }
-
 
 }
