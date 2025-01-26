@@ -35,6 +35,62 @@ class ProjectController extends Controller
         });
     }
 
+    
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'title' => 'string|max:255',
+            'description' => 'string',
+            'domaineName' => 'string|max:255',
+            'repository' => 'nullable|url',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        ], [
+            'title.required' => 'Le titre du projet est obligatoire.',
+            'description.required' => 'Veuillez fournir une description pour le projet.',
+            'domaineName.required' => 'Le nom du domaine est obligatoire.',
+            'repository.url' => 'L\'URL du dépôt doit être valide.',
+            'image.image' => 'Le fichier doit être une image.',
+            'image.mimes' => 'Seuls les formats JPEG, PNG et JPG sont autorisés.',
+            'image.max' => 'La taille de l\'image ne doit pas dépasser 2 Mo.',
+        ]);
+    
+        if ($validator->fails()) {
+            return response([
+                'STATE' => ApiResponse::INVALID_DATA,
+                'ERRORS' => $validator->errors(),
+            ]);
+        }
+    
+        $project = new Project();
+        $project->title = $request->title;
+        $project->desctiption = $request->description;
+        $project->domaineName = $request->domaineName;
+        $project->repository = $request->repository;
+        $project->user_id = $request->user_id;
+    
+        if(!request()->has('image')) {
+            $project->image_url = "";
+        }
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $imageName = time() . '.' . $image->getClientOriginalExtension();
+            $image->move(public_path('uploads/projects'), $imageName);
+            $project->image_url = 'uploads/projects/' . $imageName;
+        }
+        
+        if ($project->save()) {
+        
+            return response([
+                'STATE' => ApiResponse::OK,
+                'data' => new ProjectResource($project),
+            ]);
+        }
+    
+        return response(['STATE' => ApiResponse::ERROR]);
+    }
+    
+
     public function getProjectsByUser($id){
         $user = User::find($id);
         $PorjectByUser_CacheKey = "PorjectsByUser_{$id}";
@@ -49,9 +105,7 @@ class ProjectController extends Controller
         return ProjectResource::collection($user->projects);
     }
 
-    public function store(Request $request){
-        return $this->projectService->addProject($request->validated());
-    }
+    
 
     public function update(Request $request, $id){
         $project = Project::find($id);

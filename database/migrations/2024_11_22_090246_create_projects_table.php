@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('repository');
             $table->string('image_url');
             $table->unsignedBigInteger('user_id');
+            $table->string("shared_link");
             $table->timestamps(); 
 
 

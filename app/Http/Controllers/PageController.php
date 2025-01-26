@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\ApiResponse;
 use App\Models\Page;
+use App\Models\Project;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -33,6 +34,21 @@ class PageController extends Controller {
         return response([
             "STATE" => ApiResponse::OK,
             "DATA" => $CachedPages,
+        ]);
+    }
+
+    public function showPagesShared($id){
+        $project = Project::where('shared_link', $id)->first();
+        if($project){
+            $pages = Page::where('project_id', $project->idP)->get();
+            return response([
+                "STATE" => ApiResponse::OK,
+                "DATA" => $pages,
+            ]);
+        }
+        
+        return response([
+            "STATE" => ApiResponse::ERROR,
         ]);
     }
 

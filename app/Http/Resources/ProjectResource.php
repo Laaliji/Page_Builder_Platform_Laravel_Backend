@@ -21,7 +21,8 @@ class ProjectResource extends JsonResource
             'domaineName' => $this->domaineName,
             'repository'  => $this->repository,
             'image_url'   => $this->image_url,
-            'created_at'  => $this->created_at
+            'created_at'  => $this->created_at,
+            'shared_link'  => $this->shared_link,
         ];
     }
 }
