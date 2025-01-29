@@ -32,4 +32,5 @@ class EmailNotification extends Notification
                     ->action('Voir plus', url('/'))
                     ->line('Merci de nous avoir contactés.');
     }
+    
 }

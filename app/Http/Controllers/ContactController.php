@@ -142,6 +142,8 @@ class ContactController extends Controller
         return response()->json(['message' => 'Email envoyé avec succès !'], 200);
     }
 
+    
+
 
 }
 

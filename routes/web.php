@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\StripePaymentController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
@@ -19,3 +20,12 @@ Route::prefix('auth')->group(function () {
         Route::get('/github/status', [AuthController::class, 'getGitHubConnectionStatus']);
     });
 });
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+Route::get('stripe', [StripePaymentController::class , 'stripe']);
+Route::post('stripe', [StripePaymentController::class, 'stripePost'])->name('stripe.post');
+
+

@@ -60,6 +60,10 @@ Route::delete('/contacts/{id}', [ContactController::class, 'destroy']);
 
 
 
+use App\Http\Controllers\StripeController;
+
+Route::post('/stripe', [StripeController::class, 'processPayment']);
+
 
 
 
