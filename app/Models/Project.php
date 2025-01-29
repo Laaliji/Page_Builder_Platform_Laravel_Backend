@@ -17,7 +17,8 @@ class Project extends Model
         'image_url',
         'user_id',
         'project_type',
-        'template_id'  // Add this line
+        'template_id',
+        'style_id'
     ];
     
     public function pages(){
@@ -31,5 +32,10 @@ class Project extends Model
     public function template()  
     {
         return $this->belongsTo(Template::class, 'template_id', 'id');
+    }
+
+    public function style()
+    {
+        return $this->belongsTo(Style::class);
     }
 }

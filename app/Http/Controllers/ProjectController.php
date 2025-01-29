@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Resources\ProjectResource;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\Style;
+use App\Models\Template;
 use Illuminate\Http\Request;
 use App\Enums\ApiResponse;
 
@@ -28,7 +30,6 @@ class ProjectController extends Controller
         $template = Template::findOrFail($validatedData['template_id']);
         $project = Project::findOrFail($validatedData['project_id']);
 
-        // Create first page using template
         $page = $project->pages()->create([
             'title' => $template->name,
             'html_content' => $template->html_content,
@@ -74,6 +75,9 @@ class ProjectController extends Controller
             'image' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:2048',
             'user_id' => 'required|exists:users,id',
             'project_type' => 'nullable|string|max:255',
+            'style' => 'nullable|array',
+            'style.primary_color' => 'nullable|string',
+            'style.secondary_color' => 'nullable|string',
         ]);
     
         $project = new Project();
@@ -84,76 +88,104 @@ class ProjectController extends Controller
         $project->user_id = $validatedData['user_id'];
         $project->project_type = $validatedData['project_type'] ?? null;
     
-        
         if ($request->hasFile('image')) {
             $image = $request->file('image');
             $imageName = time() . '.' . $image->getClientOriginalExtension();
             $image->move(public_path('uploads/projects'), $imageName);
             $project->image_url = 'uploads/projects/' . $imageName;
         } else {
-            
             $project->image_url = '';  
         }
+
+        // Create style if provided
+        if (isset($validatedData['style'])) {
+            $style = new Style($validatedData['style']);
+            $style->save();
+            $project->style_id = $style->id;
+        }
     
         if ($project->save()) {
             return response([
                 'STATE' => ApiResponse::OK,
-                'data' => new ProjectResource($project),
+                'data' => new ProjectResource($project->load('style')),
             ]);
         }
     
         return response(['STATE' => ApiResponse::ERROR]);
     }
-    
 
     public function update(Request $request, $id)
-    {
-        $project = Project::find($id);
-    
-        if (!$project) {
-            return response(['STATE' => ApiResponse::NOT_FOUND]);
-        }
-    
-        
-        if ($request->has('title')) {
-            $project->title = $request->input('title');
-        }
-        if ($request->has('description')) {
-            $project->description = $request->input('description');
-        }
-        if ($request->has('domaineName')) {
-            $project->domaineName = $request->input('domaineName');
-        }
-        if ($request->has('repository')) {
-            $project->repository = $request->input('repository');
-        }
-        if ($request->has('project_type')) {
-            $project->project_type = $request->input('project_type');
-        }
-        if ($request->has('template_id')) {
-            $project->template_id = $request->input('template_id');
-        }
-    
-        
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = time() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('uploads/projects'), $imageName);
-            $project->image_url = 'uploads/projects/' . $imageName;
-        }
-    
-        if ($project->save()) {
-            return response([
-                'STATE' => ApiResponse::OK,
-                'data' => new ProjectResource($project),
-            ]);
-        }
-    
-        return response(['STATE' => ApiResponse::ERROR]);
+{
+    $project = Project::find($id);
+
+    if (!$project) {
+        return response(['STATE' => ApiResponse::NOT_FOUND]);
     }
 
-    
+    // Validate the request
+    $validated = $request->validate([
+        'title' => 'nullable|string',
+        'description' => 'nullable|string',
+        'domaineName' => 'nullable|string',
+        'repository' => 'nullable|string',
+        'project_type' => 'nullable|string',
+        'template_id' => 'nullable|exists:templates,id',
+        'style_id' => 'nullable|exists:styles,id',  // Add validation for style_id
+        'style' => 'nullable|array',
+        'image' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:2048',
+    ]);
 
+    // Handle direct style_id update
+    if ($request->has('style_id')) {
+        $project->style_id = $request->input('style_id');
+    }
+
+    // Handle other fields
+    $fillableFields = ['title', 'description', 'domaineName', 'repository', 'project_type', 'template_id'];
+    foreach ($fillableFields as $field) {
+        if ($request->has($field)) {
+            $project->{$field} = $request->input($field);
+        }
+    }
+
+    // Handle image upload
+    if ($request->hasFile('image')) {
+        $image = $request->file('image');
+        $imageName = time() . '.' . $image->getClientOriginalExtension();
+        $image->move(public_path('uploads/projects'), $imageName);
+        $project->image_url = 'uploads/projects/' . $imageName;
+    }
+
+    // Handle style update
+    if ($request->has('style')) {
+        $styleData = $request->input('style');
+        
+        if ($project->style_id) {
+            $style = Style::findOrFail($project->style_id);
+            $style->update($styleData);
+        } else {
+            $style = new Style($styleData);
+            $style->save();
+            $project->style_id = $style->id;
+        }
+    }
+
+    try {
+        $project->save();
+        
+        return response([
+            'STATE' => ApiResponse::OK,
+            'data' => new ProjectResource($project->load('style')),
+        ]);
+    } catch (\Exception $e) {
+        \Log::error('Project update failed: ' . $e->getMessage());
+        return response([
+            'STATE' => ApiResponse::ERROR,
+            'message' => 'Failed to update project',
+            'error' => $e->getMessage()
+        ]);
+    }
+}
 
     public function destroy($id){
         $project = Project::find($id);

@@ -22,7 +22,10 @@ class ProjectResource extends JsonResource
             'repository'  => $this->repository,
             'image_url'   => $this->image_url,
             'project_type' => $this->project_type,
-            'created_at'  => $this->created_at
+            'created_at'  => $this->created_at,
+            'template_id' => $this->template_id,
+            'style_id'    => $this->style_id,
+            'style'       => $this->whenLoaded('style', new StyleResource($this->style))
         ];
     }
 }
