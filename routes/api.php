@@ -13,16 +13,18 @@ Route::prefix('auth/')->group(function () {
     
     Route::post('/signup', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 
+    // GitHub routes with web middleware for session support
+    Route::middleware('web')->group(function () {
+        Route::get('/github', [AuthController::class, 'redirectToGitHub']);
+        Route::get('/github/callback', [AuthController::class, 'handleGitHubCallback']);
+    });
    
     Route::middleware('auth:sanctum')->group(function () {
-        
-        Route::get('/github/redirect', [AuthController::class, 'redirectToGitHub']);
-        Route::get('/github/callback', [AuthController::class, 'handleGitHubCallback']);
+        // Protected GitHub routes
         Route::delete('/github/unlink',[AuthController::class, 'unlinkGitHub']);
         Route::get('/github/status', [AuthController::class, 'getGitHubConnectionStatus']);
-    
-        
     });
 });
 

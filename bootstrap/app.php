@@ -3,6 +3,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\validateCsrfTokens;
+use App\Http\Middleware\RedirectIfNotAuthenticated;
 
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -14,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->validateCsrfTokens(except:['auth/*']);
+        
+        // Register the RedirectIfNotAuthenticated middleware
+        $middleware->alias([
+            'auth.json' => RedirectIfNotAuthenticated::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // You can add custom exception handling here if needed
