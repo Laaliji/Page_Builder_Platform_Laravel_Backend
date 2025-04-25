@@ -4,6 +4,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\TemplateController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -42,8 +43,17 @@ Route::prefix('auth')->group(function () {
     });
 });
 
+// Template routes (public)
+Route::get('/templates', [TemplateController::class, 'index']);
+Route::get('/templates/{id}', [TemplateController::class, 'show']);
+
 // Protected routes
-Route::middleware('auth:sanctum')->group(function () {
+
+    // Template actions
+    Route::post('/pages/from-template', [TemplateController::class, 'createPageFromTemplate']);
+    Route::post('/pages/apply-template', [TemplateController::class, 'applyTemplateToPage']);
+    
+    // Existing routes
     Route::post('/projects/update/{id}', [ProjectController::class, 'update']);
     Route::post('/usersProfile/update/{id}', [ProfileController::class, 'update']);
     Route::apiResource('/usersProfile', ProfileController::class);
@@ -57,7 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-});
+
 
 // Log viewing route for debugging
 Route::get('/debug/recent-logs', function() {
