@@ -80,6 +80,11 @@ class ProjectController extends Controller
         }
         
         if ($project->save()) {
+            // Increment user's project count in their profile
+            $user = User::find($request->user_id);
+            if ($user && $user->userProfile) {
+                $user->userProfile->incrementProjectCount();
+            }
         
             return response([
                 'STATE' => ApiResponse::OK,
