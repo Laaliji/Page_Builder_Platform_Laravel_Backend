@@ -63,7 +63,7 @@ class ProjectController extends Controller
     
         $project = new Project();
         $project->title = $request->title;
-        $project->desctiption = $request->description;
+        $project->description = $request->description;
         $project->domaineName = $request->domaineName;
         $project->repository = $request->repository;
         $project->user_id = $request->user_id;
@@ -153,7 +153,7 @@ class ProjectController extends Controller
         }
     
         $project->title = $request->input('title');
-        $project->desctiption = $request->input('description');
+        $project->description = $request->input('description');
         $project->domaineName = $request->input('domaineName');
         $project->repository = $request->input('repository');
     

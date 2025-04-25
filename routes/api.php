@@ -50,9 +50,8 @@ Route::get('/templates/{id}', [TemplateController::class, 'show']);
 // Protected routes
 
     // Template actions
-    Route::post('/pages/from-template', [TemplateController::class, 'createPageFromTemplate']);
-    Route::post('/pages/apply-template', [TemplateController::class, 'applyTemplateToPage']);
-    
+    Route::post('/api/pages/create', [PageController::class, 'createPage']);
+    Route::post('/api/pages/from-template', [PageController::class, 'createPageFromTemplate']); 
     // Existing routes
     Route::post('/projects/update/{id}', [ProjectController::class, 'update']);
     Route::post('/usersProfile/update/{id}', [ProfileController::class, 'update']);

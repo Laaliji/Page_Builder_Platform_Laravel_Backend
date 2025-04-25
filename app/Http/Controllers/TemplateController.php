@@ -51,21 +51,21 @@ class TemplateController extends Controller
             // Find the template
             $template = Template::findOrFail($request->template_id);
             
-            // Find the project
-            $project = Project::findOrFail($request->project_id);
-            
             // Generate a unique ID for the page
             $pageId = (string) Str::uuid();
             
-            // Create a new page from the template
-            $page = $template->createPage(
-                $project->idP,
-                $pageId,
-                $request->page_title
-            );
+            // Create a new page with template content
+            $page = Page::create([
+                'id' => $pageId,
+                'title' => $request->page_title ?? $template->title,
+                'html_page_title' => $request->page_title ?? $template->title,
+                'html_content' => $template->html_content,
+                'css_content' => $template->css_content,
+                'project_id' => $request->project_id
+            ]);
 
             // Clear cached pages for this project
-            Cache::forget("Pages_{$project->idP}");
+            Cache::forget("Pages_{$request->project_id}");
 
             return response()->json([
                 'STATE' => ApiResponse::OK,
