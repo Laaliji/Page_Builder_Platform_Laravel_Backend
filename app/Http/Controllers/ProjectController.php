@@ -96,17 +96,17 @@ class ProjectController extends Controller
     }
     
 
-    public function getProjectsByUser($id){
+    public function getProjectsByUser($id)
+    {
         $user = User::find($id);
-        $PorjectByUser_CacheKey = "PorjectsByUser_{$id}";
-        if(!$user){
-            return response(['message'=>'user NotFound','STATE' => ApiResponse::NOT_FOUND]);
-        }
-        if(Cache::has($PorjectByUser_CacheKey)){
-            return Cache::get($PorjectByUser_CacheKey);
+
+        if (!$user) {
+            return response([
+                'message' => 'User Not Found',
+                'STATE' => ApiResponse::NOT_FOUND
+            ]);
         }
 
-        Cache::put($PorjectByUser_CacheKey, ProjectResource::collection($user->projects), now()->addMinutes(50));
         return ProjectResource::collection($user->projects);
     }
 
