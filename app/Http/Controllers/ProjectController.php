@@ -9,198 +9,259 @@ use Illuminate\Http\Request;
 use App\Enums\ApiResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ProjectController extends Controller
 {
-    protected $projectService;
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum')->except(['show']);
+    }
 
-    // public function __construct(ProjectManagementService $projectService)
-    // {
-    //     $this->projectService = $projectService;
-    // }
-
-    public function index(){
+    public function index()
+    {
+        $user = Auth::user();
         return ProjectResource::collection(
-            Project::query()->orderBy('idP')->get()
+            $user->projects()->orderBy('created_at', 'desc')->get()
         );
-    }    
+    }
 
-    public function show($id){
+    public function show($id)
+    {
         $project = Project::find($id);
-        if(!$project){
-            return response(['STATE'=>ApiResponse::NOT_FOUND]);
+        if (!$project) {
+            return response()->json([
+                'STATE' => ApiResponse::NOT_FOUND,
+                'message' => 'Project not found'
+            ], 404);
         }
+
         return Cache::remember("Project_{$id}", now()->addMinutes(30), function () use ($project) {
             return new ProjectResource($project);
         });
     }
 
-    
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'title' => 'string|max:255',
-            'description' => 'string',
-            'domaineName' => 'string|max:255',
-            'repository' => 'nullable|url',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ], [
-            'title.required' => 'Le titre du projet est obligatoire.',
-            'description.required' => 'Veuillez fournir une description pour le projet.',
-            'domaineName.required' => 'Le nom du domaine est obligatoire.',
-            'repository.url' => 'L\'URL du dépôt doit être valide.',
-            'image.image' => 'Le fichier doit être une image.',
-            'image.mimes' => 'Seuls les formats JPEG, PNG et JPG sont autorisés.',
-            'image.max' => 'La taille de l\'image ne doit pas dépasser 2 Mo.',
+            'title' => 'required|string|max:255',
+            'description' => 'required|string|max:1000',
+            'domaineName' => 'required|string|max:255|unique:projects,domaineName',
+            'repository' => 'nullable|url|max:255',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
-    
+
         if ($validator->fails()) {
-            return response([
+            return response()->json([
                 'STATE' => ApiResponse::INVALID_DATA,
                 'ERRORS' => $validator->errors(),
-            ]);
-        }
-    
-        $project = new Project();
-        $project->title = $request->title;
-        $project->description = $request->description;
-        $project->domaineName = $request->domaineName;
-        $project->repository = $request->repository;
-        $project->user_id = $request->user_id;
-    
-        if(!request()->has('image')) {
-            $project->image_url = "";
+            ], 422);
         }
 
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = time() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('uploads/projects'), $imageName);
-            $project->image_url = 'uploads/projects/' . $imageName;
-        }
-        
-        if ($project->save()) {
-            // Increment user's project count in their profile
-            $user = User::find($request->user_id);
-            if ($user && $user->userProfile) {
-                $user->userProfile->incrementProjectCount();
+        try {
+            $user = Auth::user();
+            
+            $project = new Project();
+            $project->title = $request->title;
+            $project->description = $request->description;
+            $project->domaineName = $request->domaineName;
+            $project->repository = $request->repository;
+            $project->user_id = $user->id;
+            $project->image_url = '';
+
+            // Handle image upload
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
+                $imagePath = $image->store('projects', 'public');
+                $project->image_url = Storage::url($imagePath);
             }
-        
-            return response([
-                'STATE' => ApiResponse::OK,
-                'data' => new ProjectResource($project),
-            ]);
+
+            if ($project->save()) {
+                // Update user profile
+                if ($user->userProfile) {
+                    $user->userProfile->incrementProjectCount();
+                } else {
+                    // Create user profile if it doesn't exist
+                    $user->userProfile()->create([
+                        'total_projects' => 1,
+                        'last_project_created_at' => now()
+                    ]);
+                }
+
+                return response()->json([
+                    'STATE' => ApiResponse::OK,
+                    'data' => new ProjectResource($project),
+                ], 201);
+            }
+
+            return response()->json([
+                'STATE' => ApiResponse::ERROR,
+                'message' => 'Failed to create project'
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Project creation failed: ' . $e->getMessage());
+            return response()->json([
+                'STATE' => ApiResponse::ERROR,
+                'message' => 'Internal server error'
+            ], 500);
         }
-    
-        return response(['STATE' => ApiResponse::ERROR]);
     }
-    
 
     public function getProjectsByUser($id)
     {
-        $user = User::find($id);
-
-        if (!$user) {
-            return response([
-                'message' => 'User Not Found',
-                'STATE' => ApiResponse::NOT_FOUND
-            ]);
-        }
-
-        return ProjectResource::collection($user->projects);
-    }
-
-    
-
-    public function update(Request $request, $id){
-        $project = Project::find($id);
+        $user = Auth::user();
         
-        if(!$project){
-            return response(['STATE'=>ApiResponse::NOT_FOUND]);
+        // Users can only access their own projects unless admin
+        if ($user->id != $id) {
+            return response()->json([
+                'STATE' => ApiResponse::NOT_FOUND,
+                'message' => 'Unauthorized access'
+            ], 403);
         }
 
-        if($request->only('title') === $request->all()){
-            
-            $project->title = $request->title;
-
-            if($project->save()) return response([
-                "STATE" => ApiResponse::OK,
-            ]);
-
-            return response(["STATE" => ApiResponse::ERROR]);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'domaineName' => 'required|string|max:255',
-            'repository' => 'nullable|url',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg',
-        ], [
-            'title.required' => 'Le titre du projet est obligatoire',
-            'description.required' => 'Veuillez fournir une description pour le projet.',
-            'domaineName.required' => 'Le nom du domaine est obligatoire.',
-            'repository.url' => 'L\'URL du dépôt doit être valide.',
-            'image.image' => 'Le fichier doit être une image.',
-            'image.mimes' => 'Seuls les formats JPEG, PNG et JPG sont autorisés pour l\'image.',
-        ]);
-
-        if($validator->fails()){
-            return response([
-                'STATE' => ApiResponse::INVALID_DATA,
-                'ERRORS' => $validator->errors()
-            ]);
-        }
-    
-        $project->title = $request->input('title');
-        $project->description = $request->input('description');
-        $project->domaineName = $request->input('domaineName');
-        $project->repository = $request->input('repository');
-    
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = time().'.'.$image->getClientOriginalExtension();
-            $image->move(public_path('uploads/projects'), $imageName);
-            $project->image_url = 'uploads/projects/'.$imageName;
-        }
-
-        if($project->save()){
-            Cache::forget("Project_{$id}");
-            return response([
-                'STATE' => ApiResponse::OK,
-                'data' => $request->all()
-            ]);
-        }
-    
-    
-        return response(['STATE'=>ApiResponse::ERROR]);
+        return ProjectResource::collection($user->projects()->orderBy('created_at', 'desc')->get());
     }
 
-    public function destroy(Request $request, $id){
+    public function update(Request $request, $id)
+    {
         $project = Project::find($id);
         
         if (!$project) {
-            return response(['id' => $id, 'STATE' => ApiResponse::NOT_FOUND]);
+            return response()->json([
+                'STATE' => ApiResponse::NOT_FOUND,
+                'message' => 'Project not found'
+            ], 404);
         }
 
-        Cache::forget("Project_{$id}");
-        
-        if ($request->has('title')) {
+        // Check ownership
+        if ($project->user_id !== Auth::id()) {
+            return response()->json([
+                'STATE' => ApiResponse::NOT_FOUND,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
 
-            if ($project->title == $request->title) { 
-                if ($project->delete()) {
-                    return response(["STATE" => ApiResponse::OK]);
-                }
-                return response(["STATE" => ApiResponse::ERROR]);
+        // Handle partial updates (title only)
+        if ($request->only('title') === $request->all()) {
+            $validator = Validator::make($request->all(), [
+                'title' => 'required|string|max:255'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'STATE' => ApiResponse::INVALID_DATA,
+                    'ERRORS' => $validator->errors()
+                ], 422);
             }
-            return response(["STATE" => ApiResponse::INVALID_DATA]);
+
+            $project->title = $request->title;
+
+            if ($project->save()) {
+                Cache::forget("Project_{$id}");
+                return response()->json(['STATE' => ApiResponse::OK]);
+            }
+
+            return response()->json(['STATE' => ApiResponse::ERROR], 500);
         }
-        
-        if ($project->delete()) {
-            return response(['STATE' => ApiResponse::OK]);
+
+        // Full update validation
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'description' => 'required|string|max:1000',
+            'domaineName' => 'required|string|max:255|unique:projects,domaineName,' . $id,
+            'repository' => 'nullable|url|max:255',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'STATE' => ApiResponse::INVALID_DATA,
+                'ERRORS' => $validator->errors()
+            ], 422);
         }
-        
-        return response(['STATE' => ApiResponse::ERROR]);
+
+        try {
+            $project->title = $request->title;
+            $project->description = $request->description;
+            $project->domaineName = $request->domaineName;
+            $project->repository = $request->repository;
+
+            // Handle image upload
+            if ($request->hasFile('image')) {
+                // Delete old image
+                if ($project->image_url) {
+                    $oldPath = str_replace('/storage/', '', $project->image_url);
+                    Storage::disk('public')->delete($oldPath);
+                }
+
+                $image = $request->file('image');
+                $imagePath = $image->store('projects', 'public');
+                $project->image_url = Storage::url($imagePath);
+            }
+
+            if ($project->save()) {
+                Cache::forget("Project_{$id}");
+                return response()->json([
+                    'STATE' => ApiResponse::OK,
+                    'data' => new ProjectResource($project)
+                ]);
+            }
+
+            return response()->json(['STATE' => ApiResponse::ERROR], 500);
+        } catch (\Exception $e) {
+            Log::error('Project update failed: ' . $e->getMessage());
+            return response()->json([
+                'STATE' => ApiResponse::ERROR,
+                'message' => 'Internal server error'
+            ], 500);
+        }
     }
 
+    public function destroy(Request $request, $id)
+    {
+        $project = Project::find($id);
+        
+        if (!$project) {
+            return response()->json([
+                'STATE' => ApiResponse::NOT_FOUND,
+                'message' => 'Project not found'
+            ], 404);
+        }
+
+        // Check ownership
+        if ($project->user_id !== Auth::id()) {
+            return response()->json([
+                'STATE' => ApiResponse::NOT_FOUND,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        try {
+            // Delete associated image
+            if ($project->image_url) {
+                $imagePath = str_replace('/storage/', '', $project->image_url);
+                Storage::disk('public')->delete($imagePath);
+            }
+
+            // Delete associated pages
+            $project->pages()->delete();
+
+            Cache::forget("Project_{$id}");
+            Cache::forget("Pages_{$id}");
+            
+            if ($project->delete()) {
+                return response()->json(['STATE' => ApiResponse::OK]);
+            }
+            
+            return response()->json(['STATE' => ApiResponse::ERROR], 500);
+        } catch (\Exception $e) {
+            Log::error('Project deletion failed: ' . $e->getMessage());
+            return response()->json([
+                'STATE' => ApiResponse::ERROR,
+                'message' => 'Internal server error'
+            ], 500);
+        }
+    }
 }

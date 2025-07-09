@@ -1,88 +1,66 @@
 <?php
-use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\PageController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ProjectController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\TemplateController;
+
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\PageController;
+use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\UserController;
 
-
+// Public routes
 Route::prefix('auth')->group(function () {
-    // Public auth routes
-    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/signup', [AuthController::class, 'signup']);
     Route::post('/login', [AuthController::class, 'login']);
-    
-    // GitHub OAuth routes
-    Route::get('/github/redirect', [AuthController::class, 'redirectToGitHub']);
-    Route::get('/github/callback-direct', [AuthController::class, 'handleGitHubCallbackDirect']);
-    
-    // GitHub diagnostic route
-    Route::get('/github/test-config', function() {
-        return response()->json([
-            'client_id' => config('services.github.client_id'),
-            'redirect_configured' => !empty(config('services.github.redirect')),
-            'scopes' => ['repo', 'user'], 
-            'callback_url' => config('services.github.redirect')
-        ]);
-    });
-    
-    // Protected auth routes
-    Route::middleware('auth:sanctum')->group(function () {
-        Route::post('/logout', [AuthController::class, 'logout']);
-        Route::post('/update-password', [AuthController::class, 'updatePassword']);
-        
-        // GitHub account management for existing users
-        Route::get('/github/link', [AuthController::class, 'redirectToGitHub']);
-        Route::get('/github/callback', [AuthController::class, 'handleGitHubCallback']);
-        Route::delete('/github/unlink', [AuthController::class, 'unlinkGitHub']);
-        Route::get('/github/status', [AuthController::class, 'getGitHubConnectionStatus']);
-    });
+    Route::post('/github', [AuthController::class, 'githubAuth']);
 });
 
-// Template routes (public)
+// Public template routes
 Route::get('/templates', [TemplateController::class, 'index']);
 Route::get('/templates/{id}', [TemplateController::class, 'show']);
 
+// Public shared page route
+Route::get('/shared/{sharedLink}', [PageController::class, 'getSharedPage']);
+
 // Protected routes
-
-    // Template actions
-    Route::post('/api/pages/create', [PageController::class, 'createPage']);
-    Route::post('/api/pages/from-template', [PageController::class, 'createPageFromTemplate']); 
-    // Existing routes
-    Route::post('/projects/update/{id}', [ProjectController::class, 'update']);
-    Route::post('/usersProfile/update/{id}', [ProfileController::class, 'update']);
-    Route::apiResource('/usersProfile', ProfileController::class);
-    Route::apiResource('/projects', ProjectController::class);
-    Route::apiResource('/pages', PageController::class);
-    Route::get('/users/{id}/projects', [ProjectController::class, 'getProjectsByUser']);
-    Route::get('/user/checkGitHubConnection/{id}', [UserController::class, 'isConnectedWithGitHub']);
-    Route::get('/pages/existePages/{id}', [PageController::class, 'ExistePages']);
-    Route::get('/page/{id}', [PageController::class, 'showPage']);
-    Route::post('/page/updateMetaData/{id}', [PageController::class, 'updatePageMetaData']);
-    Route::get('/user', function (Request $request) {
-        return $request->user();
+Route::middleware('auth:sanctum')->group(function () {
+    // Auth routes
+    Route::prefix('auth')->group(function () {
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/user', [AuthController::class, 'user']);
+        Route::put('/password', [AuthController::class, 'updatePassword']);
     });
-
-
-// Log viewing route for debugging
-Route::get('/debug/recent-logs', function() {
-    $logFile = storage_path('logs/laravel.log');
-    $logs = [];
     
-    if (file_exists($logFile)) {
-        $logContent = file_get_contents($logFile);
-        $logs = array_slice(explode("\n", $logContent), -50); // Get last 50 lines
-    }
+    // User routes
+    Route::prefix('users')->group(function () {
+        Route::get('/{id}/projects', [ProjectController::class, 'getProjectsByUser']);
+        Route::get('/{id}/github-status', [UserController::class, 'isConnectedWithGitHub']);
+    });
     
-    return response()->json(['logs' => $logs]);
+    // Project routes
+    Route::apiResource('projects', ProjectController::class);
+    
+    // Page routes
+    Route::prefix('projects/{projectId}')->group(function () {
+        Route::get('/pages', [PageController::class, 'index']);
+        Route::get('/pages/exists', [PageController::class, 'ExistePages']);
+    });
+    
+    Route::apiResource('pages', PageController::class)->except(['index']);
+    Route::put('/pages/{id}/metadata', [PageController::class, 'updatePageMetaData']);
+    
+    // Template routes
+    Route::post('/templates/apply', [TemplateController::class, 'applyTemplateToPage']);
 });
 
-// Public routes
-Route::get('pages/shared/{id}', [PageController::class, 'showPagesShared']);
+// Debug route (remove in production)
+if (config('app.debug')) {
+    Route::get('/debug/logs', function () {
+        return response()->json([
+            'logs' => array_slice(file(storage_path('logs/laravel.log')), -50)
+        ]);
+    });
+}
 
 Route::get('/hash', function () {
     return Hash::make('123456789');
